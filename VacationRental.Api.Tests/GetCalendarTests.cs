@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -17,12 +20,14 @@ namespace VacationRental.Api.Tests
             _client = fixture.Client;
         }
 
-        [Fact]
-        public async Task GivenCompleteRequest_WhenGetCalendar_ThenAGetReturnsTheCalculatedCalendar()
+        [Theory]
+        [ClassData(typeof(TestData))]
+        public async Task GivenCompleteRequest_WhenGetCalendar_ThenAGetReturnsTheCalculatedCalendar(int preparationDays, int[][] bookingsByDate, int[][] preparationsByDate)
         {
             var postRentalRequest = new RentalBindingModel
             {
-                Units = 2
+                Units = 2,
+                PreparationTimeInDays = preparationDays
             };
 
             ResourceIdViewModel postRentalResult;
@@ -69,25 +74,37 @@ namespace VacationRental.Api.Tests
                 Assert.Equal(postRentalResult.Id, getCalendarResult.RentalId);
                 Assert.Equal(5, getCalendarResult.Dates.Count);
 
-                Assert.Equal(new DateTime(2000, 01, 01), getCalendarResult.Dates[0].Date);
-                Assert.Empty(getCalendarResult.Dates[0].Bookings);
-                
-                Assert.Equal(new DateTime(2000, 01, 02), getCalendarResult.Dates[1].Date);
-                Assert.Single(getCalendarResult.Dates[1].Bookings);
-                Assert.Contains(getCalendarResult.Dates[1].Bookings, x => x.Id == postBooking1Result.Id);
-                
-                Assert.Equal(new DateTime(2000, 01, 03), getCalendarResult.Dates[2].Date);
-                Assert.Equal(2, getCalendarResult.Dates[2].Bookings.Count);
-                Assert.Contains(getCalendarResult.Dates[2].Bookings, x => x.Id == postBooking1Result.Id);
-                Assert.Contains(getCalendarResult.Dates[2].Bookings, x => x.Id == postBooking2Result.Id);
-                
-                Assert.Equal(new DateTime(2000, 01, 04), getCalendarResult.Dates[3].Date);
-                Assert.Single(getCalendarResult.Dates[3].Bookings);
-                Assert.Contains(getCalendarResult.Dates[3].Bookings, x => x.Id == postBooking2Result.Id);
-                
-                Assert.Equal(new DateTime(2000, 01, 05), getCalendarResult.Dates[4].Date);
-                Assert.Empty(getCalendarResult.Dates[4].Bookings);
+                for (int i = 0; i < 5; i++)
+                {
+                    Assert.Equal(new DateTime(2000, 01, i+1), getCalendarResult.Dates[i].Date);
+
+                    Assert.Equal(bookingsByDate[i].Length, getCalendarResult.Dates[i].Bookings.Count);
+                    var bookedUnits = getCalendarResult.Dates[i].Bookings.Select(b => b.Unit);
+                    bookingsByDate[i].ToList().ForEach(unit => Assert.Contains(bookedUnits, bu => bu == unit));
+
+                    Assert.Equal(preparationsByDate[i].Length, getCalendarResult.Dates[i].PreparationTimes.Count);
+                    var prepUnits = getCalendarResult.Dates[i].PreparationTimes.Select(p => p.Unit);
+                    preparationsByDate[i].ToList().ForEach(unit => Assert.Contains(prepUnits, pu => pu == unit));
+
+
+                }
             }
         }
+    }
+
+    public class TestData : IEnumerable<object[]>
+    {
+        public IEnumerator<object[]> GetEnumerator()
+        {
+            yield return new object[] { 0,
+                new int[][] { new int[0], new int[] { 1 }, new int[] { 1, 2 }, new int[] { 2 }, new int[0] },
+                new int[][] { new int[0], new int[0], new int[0], new int[0], new int[0] } };
+            yield return new object[] { 2,
+                new int[][] { new int[0], new int[] { 1 }, new int[] { 1, 2 }, new int[] { 2 }, new int[0] },
+                new int[][] { new int[0], new int[0], new int[0], new int[] { 1 }, new int[] { 1, 2 } } };
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
     }
 }
