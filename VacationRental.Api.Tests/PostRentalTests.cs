@@ -17,12 +17,15 @@ namespace VacationRental.Api.Tests
             _client = fixture.Client;
         }
 
-        [Fact]
-        public async Task GivenCompleteRequest_WhenPostRental_ThenAGetReturnsTheCreatedRental()
+        [Theory]
+        [InlineData(25, 0)]
+        [InlineData(1, 10)]
+        public async Task GivenCompleteRequest_WhenPostRental_ThenAGetReturnsTheCreatedRental(int units, int preparationTimeInDays)
         {
             var request = new RentalBindingModel
             {
-                Units = 25
+                Units = units,
+                PreparationTimeInDays = preparationTimeInDays
             };
 
             ResourceIdViewModel postResult;
@@ -38,6 +41,7 @@ namespace VacationRental.Api.Tests
 
                 var getResult = await getResponse.Content.ReadAsAsync<RentalViewModel>();
                 Assert.Equal(request.Units, getResult.Units);
+                Assert.Equal(request.PreparationTimeInDays, getResult.PreparationTimeInDays);
             }
         }
     }
